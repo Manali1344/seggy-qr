@@ -1,101 +1,166 @@
 // ---------- CONFIG ----------
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbznpLyWPppgG5JSpBHS0UvL-MvsaYcyC1RDg26a37e1D9kULDDVoBhfi3WkJGS43yms/exec"; // <<< REPLACE THIS
-const FILENAME_PREFIX = "selfie_"; // optional
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/YOUR_WEB_APP_ID/exec"; // optional if you use upload
 // ----------------------------
 
-const video = document.getElementById("video");
-const previewImg = document.getElementById("preview");
-const captureBtn = document.getElementById("captureBtn");
-const retakeBtn = document.getElementById("retakeBtn");
-const uploadBtn = document.getElementById("uploadBtn");
-const statusEl = document.getElementById("status");
-const resultWrap = document.querySelector(".result-wrap");
-const qrCanvas = document.getElementById("qrCanvas");
-const downloadLink = document.getElementById("downloadLink");
-const copyLinkBtn = document.getElementById("copyLinkBtn");
+const video = document.getElementById('video');
+const captureBtn = document.getElementById('captureBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+const uploadBtn = document.getElementById('uploadBtn');
+const fsBtn = document.getElementById('fsBtn');
+const statusEl = document.getElementById('status');
+const resultPanel = document.getElementById('resultPanel');
+const previewImg = document.getElementById('preview');
+const downloadLocalBtn = document.getElementById('downloadLocalBtn');
+const closePreviewBtn = document.getElementById('closePreviewBtn');
 
-let localBlobDataUrl = null;
+let localDataUrl = null;
+let streamRef = null;
 
-// Start camera
+// start camera with user-facing camera; prefer high resolution if available
 async function startCamera(){
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-    video.srcObject = stream;
+    const constraints = {
+      video: {
+        facingMode: "user",
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: false
+    };
+    streamRef = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = streamRef;
+    await video.play();
+    statusEl.textContent = "";
   } catch (err) {
-    statusEl.textContent = "Error accessing camera: " + err.message;
+    statusEl.textContent = "Camera error: " + err.message;
   }
 }
 startCamera();
 
-// Capture snapshot
-captureBtn.addEventListener("click", () => {
-  const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth || 1280;
-  canvas.height = video.videoHeight || 720;
-  const ctx = canvas.getContext("2d");
+// capture image from video (preserves aspect ratio of video element)
+function captureSnapshot(){
+  const videoTrack = streamRef && streamRef.getVideoTracks()[0];
+  const settings = videoTrack ? videoTrack.getSettings() : null;
+  const w = settings && settings.width ? settings.width : video.videoWidth || 1280;
+  const h = settings && settings.height ? settings.height : video.videoHeight || 720;
+
+  // create canvas matching video element display size for correct crop
+  const canvas = document.createElement('canvas');
+  // Use displayed video dimensions to capture what user sees (not raw camera pixel size)
+  const rect = video.getBoundingClientRect();
+  canvas.width = rect.width * devicePixelRatio;
+  canvas.height = rect.height * devicePixelRatio;
+
+  const ctx = canvas.getContext('2d');
+  // mirror back when drawing so saved image is not flipped
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  const dataUrl = canvas.toDataURL("image/png");
-  previewImg.src = dataUrl;
-  localBlobDataUrl = dataUrl;
-  statusEl.textContent = "Snapshot ready.";
+
+  const dataUrl = canvas.toDataURL('image/png');
+  return dataUrl;
+}
+
+// events
+captureBtn.addEventListener('click', () => {
+  localDataUrl = captureSnapshot();
+  previewImg.src = localDataUrl;
+  resultPanel.style.display = 'block';
+  resultPanel.setAttribute('aria-hidden', 'false');
+  statusEl.textContent = "Captured — preview below.";
 });
 
-// Retake
-retakeBtn.addEventListener("click", () => {
-  previewImg.src = "";
-  localBlobDataUrl = null;
-  resultWrap.style.display = "none";
-  statusEl.textContent = "";
+retakeBtn.addEventListener('click', async () => {
+  // hide preview panel and continue camera
+  localDataUrl = null;
+  previewImg.src = '';
+  resultPanel.style.display = 'none';
+  resultPanel.setAttribute('aria-hidden', 'true');
+  statusEl.textContent = "Ready — take a new selfie.";
 });
 
-// Upload to GAS + get public Drive link
-uploadBtn.addEventListener("click", async () => {
-  if (!localBlobDataUrl) return alert("Take a selfie first.");
-  statusEl.textContent = "Uploading to Google Drive...";
+closePreviewBtn.addEventListener('click', () => {
+  // close preview but keep camera
+  previewImg.src = '';
+  resultPanel.style.display = 'none';
+  statusEl.textContent = "Preview closed.";
+});
+
+downloadLocalBtn.addEventListener('click', () => {
+  if (!localDataUrl) return;
+  const a = document.createElement('a');
+  a.href = localDataUrl;
+  a.download = `selfie_${Date.now()}.png`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+});
+
+// Upload button (optional — sends to GAS)
+uploadBtn.addEventListener('click', async () => {
+  if (!localDataUrl) {
+    statusEl.textContent = "Take a selfie first.";
+    return;
+  }
+  statusEl.textContent = "Uploading...";
   uploadBtn.disabled = true;
-
   try {
-    const payload = { image: localBlobDataUrl };
+    const payload = { image: localDataUrl };
     const res = await fetch(GAS_WEB_APP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     const data = await res.json();
-
-    if (data.status && data.status === "error") {
-      throw new Error(data.message || "Unknown error from server");
+    if (data.status === 'success') {
+      const downloadUrl = data.download_url;
+      statusEl.textContent = "Uploaded. QR/link generated.";
+      // show the QR using QRious as in your previous code (or open link)
+      // Example: open link in new tab
+      window.open(downloadUrl, '_blank');
+    } else {
+      throw new Error(data.message || 'Upload failed');
     }
-
-    const downloadUrl = data.download_url;
-    // Show QR
-    new QRious({
-      element: qrCanvas,
-      value: downloadUrl,
-      size: 250
-    });
-
-    // Show link
-    downloadLink.href = downloadUrl;
-    downloadLink.textContent = downloadUrl;
-
-    resultWrap.style.display = "block";
-    statusEl.textContent = "Uploaded. Scan QR or open link to download.";
   } catch (err) {
-    statusEl.textContent = "Upload failed: " + (err.message || err);
+    statusEl.textContent = "Upload error: " + err.message;
   } finally {
     uploadBtn.disabled = false;
   }
 });
 
-// Copy link
-copyLinkBtn.addEventListener("click", async () => {
-  const url = downloadLink.href;
-  if (!url) return;
-  try {
-    await navigator.clipboard.writeText(url);
-    statusEl.textContent = "Link copied to clipboard.";
-  } catch {
-    statusEl.textContent = "Copy failed — open link and copy manually.";
+// Fullscreen toggle
+fsBtn.addEventListener('click', () => {
+  const el = document.getElementById('cameraContainer');
+  if (!document.fullscreenElement) {
+    if (el.requestFullscreen) {
+      el.requestFullscreen().catch(err => statusEl.textContent = `FS error: ${err.message}`);
+    } else if (el.webkitRequestFullscreen) {
+      el.webkitRequestFullscreen();
+    }
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
   }
 });
+
+// Optional: keyboard "f" toggles fullscreen
+document.addEventListener('keydown', (e) => {
+  if (e.key.toLowerCase() === 'f') fsBtn.click();
+});
+
+// Handle page visibility / stop camera when leaving
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // optionally stop tracks to save battery — comment this if you want camera to keep running
+    // stopStream();
+  } else {
+    if (!streamRef) startCamera();
+  }
+});
+
+// stop camera utility (if you want it)
+function stopStream(){
+  if (!streamRef) return;
+  streamRef.getTracks().forEach(t => t.stop());
+  streamRef = null;
+}
