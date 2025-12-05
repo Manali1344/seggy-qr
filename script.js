@@ -27,7 +27,7 @@ function sendData() {
 
   // Delay to allow server to save the link
   setTimeout(() => {
-  fetch("YOUR_WEBAPP_URL")
+  fetch("https://script.google.com/macros/s/AKfycbzCg08shD79LQNs7bZCNEf_On-BnTL0D0nHrOu5PlTZI66N5d1bmkUU1ft01tpm_K8tIA/exec")
     .then(r => r.text())
     .then(url => {
       const qrUrl =
