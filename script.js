@@ -27,13 +27,14 @@ function sendData() {
 
   // Delay to allow server to save the link
   setTimeout(() => {
-    fetch("YOUR_WEBAPP_URL")
-      .then(r => r.text())
-      .then(url => {
-        const qrUrl =
-          `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
-        document.getElementById("qrCode").src = qrUrl;
-        document.getElementById("msg").innerText = "Scan the QR to open your selfie!";
-      });
-  }, 2000);
+  fetch("YOUR_WEBAPP_URL")
+    .then(r => r.text())
+    .then(url => {
+      const qrUrl =
+        `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+      
+      document.getElementById("qrCode").src = qrUrl;
+    });
+}, 2000);
+
 }
