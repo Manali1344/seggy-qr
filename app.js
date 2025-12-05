@@ -107,10 +107,16 @@ uploadBtn.addEventListener('click', async () => {
   try {
     const payload = { image: localDataUrl };
     const res = await fetch(GAS_WEB_APP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+      method: "POST",
+      body: JSON.stringify({ image: localDataUrl }),
+      headers: { "Content-Type": "application/json" }
+    })
+    .then(res => res.text())
+    .then(text => {
+      const json = JSON.parse(text);
+      console.log(json);
+  });
+
     const data = await res.json();
     if (data.status === 'success') {
       const downloadUrl = data.download_url;
