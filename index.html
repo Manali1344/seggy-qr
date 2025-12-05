@@ -1,86 +1,44 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <title>QR Selfie Booth</title>
-
-  <!-- Google Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: "Poppins", sans-serif;
-      background: black;
-      overflow: hidden;
-    }
-
-    /* FULL SCREEN CAMERA */
-    #video {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;  /* important */
-      z-index: 1;
-    }
-
-    /* BUTTONS */
-    .controls {
-      position: fixed;
-      bottom: 20px;
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      z-index: 5;
-    }
-
-    button {
-      padding: 15px 25px;
-      background: #ff3366;
-      color: white;
-      border: none;
-      border-radius: 50px;
-      font-size: 20px;
-      cursor: pointer;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    }
-
-    #selfiePreview, #qrCode {
-      display: none;
-      width: 80%;
-      margin: 20px auto;
-      border-radius: 10px;
-      z-index: 10;
-      position: relative;
-    }
-
-    #msg {
-      color: white;
-      text-align: center;
-      margin-top: 20px;
-      z-index: 10;
-      position: relative;
-    }
-  </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Selfie Booth with QR (GAS)</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
+  <div class="container">
+    <h1>Selfie Booth</h1>
 
-  <video id="video" autoplay></video>
+    <div class="camera-wrap">
+      <video id="video" autoplay playsinline></video>
+      <button id="captureBtn">Capture</button>
+    </div>
 
-  <div class="controls">
-    <button id="snap">📸 Capture</button>
+    <div class="preview-wrap">
+      <h2>Preview</h2>
+      <img id="preview" alt="selfie preview" />
+      <div class="actions">
+        <button id="retakeBtn" class="secondary">Retake</button>
+        <button id="uploadBtn" class="primary">Upload & Generate QR</button>
+      </div>
+    </div>
+
+    <div class="result-wrap" style="display:none;">
+      <h2>Your QR & Link</h2>
+      <canvas id="qrCanvas"></canvas>
+      <div class="link-row">
+        <a id="downloadLink" href="#" target="_blank" rel="noopener">Open / Download Selfie</a>
+        <button id="copyLinkBtn">Copy Link</button>
+      </div>
+      <p class="small">Tip: scan the QR with your phone to download the selfie.</p>
+    </div>
+
+    <div id="status"></div>
   </div>
 
-  <canvas id="canvas" width="300" height="250" style="display:none;"></canvas>
-
-  <img id="selfiePreview" />
-  <img id="qrCode" />
-
-  <p id="msg"></p>
-
-  <script src="script.js"></script>
+  <!-- QRious for QR generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
