@@ -1,5 +1,5 @@
 // ---------- CONFIG ----------
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/YOUR_WEB_APP_ID/exec"; // optional if you use upload
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbznpLyWPppgG5JSpBHS0UvL-MvsaYcyC1RDg26a37e1D9kULDDVoBhfi3WkJGS43yms/exec"; // optional if you use upload
 // ----------------------------
 
 const video = document.getElementById('video');
