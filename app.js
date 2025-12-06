@@ -1,9 +1,5 @@
 // ---------- CONFIG ----------
-<<<<<<< HEAD
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw581kH9Er-QnGv7p_uenKicJIvyRBzLK6YU8-uoFZa2Zkr0aYrFUtX1l30G4hpHaZ6/exec";
-=======
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbznpLyWPppgG5JSpBHS0UvL-MvsaYcyC1RDg26a37e1D9kULDDVoBhfi3WkJGS43yms/exec"; // optional if you use upload
->>>>>>> 1ce14afa2c35c205c5a0f2bb74a92ba4fc04440c
 // ----------------------------
 
 const video = document.getElementById('video');
@@ -101,10 +97,9 @@ uploadBtn.addEventListener('click', async () => {
 
   statusEl.textContent = "Uploading…";
   uploadBtn.disabled = true;
-<<<<<<< HEAD
 
   // send to Apps Script
-  const res = await fetch("http://localhost:3000/upload", {
+  const res = await fetch("https://seggy-qr.onrender.com/upload", {
     method:"POST",
     headers:{ "Content-Type": "application/json" },
     body: JSON.stringify({ image: localDataUrl })
@@ -129,36 +124,6 @@ uploadBtn.addEventListener('click', async () => {
 
   statusEl.textContent = "Scan with Google Lens 📱";
   uploadBtn.disabled = false;
-=======
-  try {
-    const payload = { image: localDataUrl };
-    const res = await fetch(GAS_WEB_APP_URL, {
-      method: "POST",
-      body: JSON.stringify({ image: localDataUrl }),
-      headers: { "Content-Type": "application/json" }
-    })
-    .then(res => res.text())
-    .then(text => {
-      const json = JSON.parse(text);
-      console.log(json);
-  });
-
-    const data = await res.json();
-    if (data.status === 'success') {
-      const downloadUrl = data.download_url;
-      statusEl.textContent = "Uploaded. QR/link generated.";
-      // show the QR using QRious as in your previous code (or open link)
-      // Example: open link in new tab
-      window.open(downloadUrl, '_blank');
-    } else {
-      throw new Error(data.message || 'Upload failed');
-    }
-  } catch (err) {
-    statusEl.textContent = "Upload error: " + err.message;
-  } finally {
-    uploadBtn.disabled = false;
-  }
->>>>>>> 1ce14afa2c35c205c5a0f2bb74a92ba4fc04440c
 });
 
 // Fullscreen
