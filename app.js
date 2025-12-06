@@ -1,5 +1,5 @@
 // ---------- CONFIG ----------
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/YOUR_WEB_APP_ID/exec"; // optional if you use upload
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw581kH9Er-QnGv7p_uenKicJIvyRBzLK6YU8-uoFZa2Zkr0aYrFUtX1l30G4hpHaZ6/exec";
 // ----------------------------
 
 const video = document.getElementById('video');
@@ -37,28 +37,22 @@ async function startCamera(){
 }
 startCamera();
 
-// capture image from video (preserves aspect ratio of video element)
+// capture image
 function captureSnapshot(){
   const videoTrack = streamRef && streamRef.getVideoTracks()[0];
   const settings = videoTrack ? videoTrack.getSettings() : null;
-  const w = settings && settings.width ? settings.width : video.videoWidth || 1280;
-  const h = settings && settings.height ? settings.height : video.videoHeight || 720;
 
-  // create canvas matching video element display size for correct crop
   const canvas = document.createElement('canvas');
-  // Use displayed video dimensions to capture what user sees (not raw camera pixel size)
   const rect = video.getBoundingClientRect();
   canvas.width = rect.width * devicePixelRatio;
   canvas.height = rect.height * devicePixelRatio;
 
   const ctx = canvas.getContext('2d');
-  // mirror back when drawing so saved image is not flipped
   ctx.translate(canvas.width, 0);
   ctx.scale(-1, 1);
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  const dataUrl = canvas.toDataURL('image/png');
-  return dataUrl;
+  return canvas.toDataURL('image/png');
 }
 
 // events
@@ -66,21 +60,17 @@ captureBtn.addEventListener('click', () => {
   localDataUrl = captureSnapshot();
   previewImg.src = localDataUrl;
   resultPanel.style.display = 'block';
-  resultPanel.setAttribute('aria-hidden', 'false');
   statusEl.textContent = "Captured — preview below.";
 });
 
 retakeBtn.addEventListener('click', async () => {
-  // hide preview panel and continue camera
   localDataUrl = null;
   previewImg.src = '';
   resultPanel.style.display = 'none';
-  resultPanel.setAttribute('aria-hidden', 'true');
   statusEl.textContent = "Ready — take a new selfie.";
 });
 
 closePreviewBtn.addEventListener('click', () => {
-  // close preview but keep camera
   previewImg.src = '';
   resultPanel.style.display = 'none';
   statusEl.textContent = "Preview closed.";
@@ -96,71 +86,52 @@ downloadLocalBtn.addEventListener('click', () => {
   a.remove();
 });
 
-// Upload button (optional — sends to GAS)
+// ---------------------------
+// REAL UPLOAD → public Google URL
+// ---------------------------
 uploadBtn.addEventListener('click', async () => {
   if (!localDataUrl) {
     statusEl.textContent = "Take a selfie first.";
     return;
   }
-  statusEl.textContent = "Uploading...";
+
+  statusEl.textContent = "Uploading…";
   uploadBtn.disabled = true;
-  try {
-    const payload = { image: localDataUrl };
-    const res = await fetch(GAS_WEB_APP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (data.status === 'success') {
-      const downloadUrl = data.download_url;
-      statusEl.textContent = "Uploaded. QR/link generated.";
-      // show the QR using QRious as in your previous code (or open link)
-      // Example: open link in new tab
-      window.open(downloadUrl, '_blank');
-    } else {
-      throw new Error(data.message || 'Upload failed');
-    }
-  } catch (err) {
-    statusEl.textContent = "Upload error: " + err.message;
-  } finally {
-    uploadBtn.disabled = false;
-  }
+
+  // send to Apps Script
+  const res = await fetch("http://localhost:3000/upload", {
+    method:"POST",
+    headers:{ "Content-Type": "application/json" },
+    body: JSON.stringify({ image: localDataUrl })
+  });
+
+  const { url } = await res.json();
+
+  // remove old qr
+  const oldQR = document.getElementById("qrCanvas");
+  if (oldQR) oldQR.remove();
+
+  // create new QR with public link
+  const qr = new QRious({
+    value: url,
+    size: 220
+  });
+
+  qr.canvas.id = "qrCanvas";
+  qr.canvas.style.marginTop = "10px";
+
+  resultPanel.appendChild(qr.canvas);
+
+  statusEl.textContent = "Scan with Google Lens 📱";
+  uploadBtn.disabled = false;
 });
 
-// Fullscreen toggle
+// Fullscreen
 fsBtn.addEventListener('click', () => {
   const el = document.getElementById('cameraContainer');
   if (!document.fullscreenElement) {
-    if (el.requestFullscreen) {
-      el.requestFullscreen().catch(err => statusEl.textContent = `FS error: ${err.message}`);
-    } else if (el.webkitRequestFullscreen) {
-      el.webkitRequestFullscreen();
-    }
+    el.requestFullscreen?.();
   } else {
-    if (document.exitFullscreen) document.exitFullscreen();
-    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    document.exitFullscreen?.();
   }
 });
-
-// Optional: keyboard "f" toggles fullscreen
-document.addEventListener('keydown', (e) => {
-  if (e.key.toLowerCase() === 'f') fsBtn.click();
-});
-
-// Handle page visibility / stop camera when leaving
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    // optionally stop tracks to save battery — comment this if you want camera to keep running
-    // stopStream();
-  } else {
-    if (!streamRef) startCamera();
-  }
-});
-
-// stop camera utility (if you want it)
-function stopStream(){
-  if (!streamRef) return;
-  streamRef.getTracks().forEach(t => t.stop());
-  streamRef = null;
-}
